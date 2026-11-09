@@ -24,7 +24,7 @@ Copy the folder `skills/joy-media-windows-mcp` into your agent's skills folder (
 
 ## Safety in one line
 
-Use a separate unpacked app copy and a **new** `--user-data-dir`; never touch the installed app; check the `joy://` registry key before and after; delete nothing; ask the owner before every run.
+Use a separate unpacked app copy and a **new** `--user-data-dir`; point the profile at a scratch asset library before any import; never touch the installed app; check the `joy://` registry key before and after; delete nothing; ask the owner before every run. Manual runs are partial evidence, not receipts.
 
 ## Status
 
