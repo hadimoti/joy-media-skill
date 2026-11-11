@@ -27,7 +27,7 @@ Build or unpack the commit you want into a short path (under 260 characters), fo
 
 1. `git archive <sha>` to a tar, extract to `C:\jg\<name>`.
 2. `pnpm install --offline --frozen-lockfile` (needs a warm pnpm store).
-3. Copy the Electron `dist` folder and `path.txt` from an existing copy's `node_modules\.pnpm\electron@<ver>\node_modules\electron` (offline installs do not download Electron). Check the `electron.exe` SHA-256.
+3. Copy the Electron `dist` folder and `path.txt` from an existing copy's `node_modules\.pnpm\electron@<ver>\node_modules\electron` (offline installs do not download Electron). Check the `electron.exe` SHA-256. If no copy has it, unzip the cached runtime instead: `%LOCALAPPDATA%\electron\Cache\<hash>\electron-v<ver>-win32-x64.zip` into a scratch folder (no download). Do not call the `electron` package's path helper in a fresh worktree: it starts a download when `dist` is missing. To make tools that resolve `electron` (Playwright specs, scripts) use the unzipped runtime, set `ELECTRON_OVERRIDE_DIST_PATH` to that folder.
 4. `pnpm build`, then `pnpm --filter @joy-media/desktop package:unpacked`.
 5. `robocopy apps\desktop\dist\joy-media-unpacked C:\jg\app-<sha> /E`.
 6. Check that `resources\app\node_modules\playwright-core` exists. Without it the Worker dies and every export waits at "Waiting for Worker export verification". Copy the folder from a working copy if it is missing.
@@ -59,7 +59,8 @@ Coordinates below are from a 4920x2160 screen with the JOY window at its default
 |---|---|
 | File menu | (910, 288) |
 | File > Projects Library | (1077, 358) |
-| New project button | (3023, 311), then click the name field (1165, 727), `Type` the name with `press_enter` |
+| New project button | (3023, 311), then click the name field (1165, 727), `Type` the name with `press_enter`. If Enter does not submit (seen on a later build), click the tick next to the box, about (1400, 729) |
+| Left panel: import media, then confirm | upload icon in the media panel (about 753, 505), then "Choose file" (about 907, 715) opens the open dialog; type the full path and Enter; the file is queued in the "Import media" box, so click its **tick** (about 1230, 715) to finish; the card then shows a "+" (add to timeline) button |
 | First project card | (1680, 873) |
 | Timeline "Import media" (empty timeline) | (2199, 1312) |
 | Open-file dialog: name box / Open | (1587, 1208) / (2268, 1264) |
@@ -83,13 +84,27 @@ A new profile uses the user's default asset library (`%USERPROFILE%\joy-media-as
 3. Click the refresh icon. A new empty folder reports "Incomplete: no catalog.json". Write a minimal catalog yourself: `{"version": 1, "generatedAt": "<ISO time>", "counts": {"total": 0, "audio": 0, "image": 0, "video": 0}, "assets": []}`. Never copy another library's catalog.
 4. Confirm "Connected & Ready" with the expected count, then click **Done**.
 
-The setting is per profile, so a fresh profile needs the same switch, including before an editable-project import. Count the real library's files before and after the run.
+The setting is per profile, so a fresh profile needs the same switch, including before an editable-project import. It is stored in the profile, so a relaunch on the same profile keeps the scratch library (check the media panel count on every launch). After you switch, the media panel can keep the old library's counts until you click refresh or reopen the project; do not import until the panel shows the scratch counts. Count the real library's files before and after the run (hash a sorted `path|length` listing and compare).
 
 Coordinates from one 4920x2160 run (check with a screenshot): Edit (972, 288); Asset Library Folder... (1076, 620); path box (1792, 958); Apply Path (1453, 1030); refresh (1866, 974); Done (1430, 1399). The Edit menu sometimes needs a second click, because the first click only highlights it.
 
 ### Editable project route (fresh-profile check)
 
 File > Export Editable Project... writes `<name>.joyproject.json` through a Save dialog (type the full path into a folder that exists). Then, in a new empty profile with the library switched (3b), use File > Import Editable Project... and type the full path. The clip appears on the timeline and the monitor shows its frame. This shows that a project saved in one process opens and renders in a fresh profile. It is a visual check, not a scripted persistence test.
+
+### Missing media relink check
+
+Shows the Missing media section and the relink rules on a build that has them. Use the scratch profile and library from 3b.
+
+1. In a project with one imported clip on the timeline, File > Export Editable Project... and save to a scratch folder (the package holds the media as base64, `media[].status` = `embedded`).
+2. With a script, copy the package and set every `media` entry to `{ "asset": <same asset>, "status": "missing", "missingReason": "unavailable" }`.
+3. Delete the clip from the scratch library (its card's trash icon, confirm). It must be gone from the library or the app will still find it.
+4. File > Import Editable Project... and type the path of the stripped copy. The Assets panel shows **Missing media (1)** with the file name, kind and size, and a **Relink** button.
+5. Relink with a **different** file: expect a refusal such as "The chosen file has a different size from the original. Choose the original file. The original is unchanged.", the card stays, and a "Use different file" choice appears.
+6. Relink with the **original** file: expect **Missing media (0)** and "Relinked <name>.", and the preview shows the clip.
+7. Close the app, relaunch on the same profile: the project opens with no Missing media section and the clip still on the timeline.
+
+Not covered here: the "Use different file" override with Undo, and cancelling the picker. A relinked original is not re-added as a card in the media list on the tested build.
 
 ## 4. Before, during and after a run
 
@@ -123,6 +138,21 @@ After: close the app (the Close window button), confirm no `electron` process is
 - On the 1.1.0 build from ded976c8, an unpacked copy did not change the `joy://` key at launch, after close, or on relaunch. Keep checking it on every launch.
 - `Snapshot` lists only desktop icons and the taskbar for the JOY window; the editor's own controls are not exposed. Use screenshots and the coordinate table.
 - A dialog can fade out for a few seconds with its path still in the box. Wait 3 to 5 seconds and take a new screenshot before the next click.
+- **Export leaves a staged copy in the asset library** on the tested line: a card named `<export name>.mp4.stage` (about the size of the encode) stays next to your imported clips after an export. It is listed in the media panel and counted in the catalog. Expect it in the scratch library, and do not treat it as an import you made.
+- **`reg export` from Git Bash**: the `/y` flag is rewritten as a path and the command fails (or writes a wrong file). Run it from PowerShell. Read the exported file's `shell\open\command` line, not just its hash, so you can say which exe the key names.
+- **The `joy://` key can be changed by another agent's build on the same PC** (another session launching its own unpacked or test copy). If the first export of a run already differs from the expected value, say so, note which path it names, and do not restore it yourself. Only the owner decides a restore. A differing value at the start is not evidence that your run changed it: export again at the end and compare both to the baseline.
+- A sample project that ships with a fresh profile has placeholder clips whose media does not exist. Exporting it fails with "Clip ... cannot resolve visual asset". Test exports in a new project with your own clip.
+- A 4-second 1280x720 video-only clip exported at the 1080x1920 preset in about 25 seconds, with the Save dialog appearing after the encode ("Encoding preview-equivalent H.264/AAC ... n/120 frames" in the status line). The output was H.264 plus a silent AAC track, 120 frames, clean full decode.
+
+## 6b. Running the repo's Playwright desktop specs
+
+The JOY Media repo has packaged-app specs under `tests/desktop`. Facts from running them against an unpacked copy:
+
+- They launch the app with `--joy-media-test-mode` and wait for a download in a test folder. A build without that hook opens the real Windows Save dialog and the spec hangs until it times out. Check that the build has the hook before you start. A native dialog on screen during a spec run means this.
+- Specs open the user's default asset library through the home folder. Run them with a scratch `USERPROFILE`/`HOME`, and scratch `TEMP`/`TMP`, so nothing reaches the real library. Set `PLAYWRIGHT_BASE_URL` to an unused address when the specs are Electron-only so no dev web server starts. Count the real library before and after.
+- Set `ELECTRON_OVERRIDE_DIST_PATH` (section 1) so the specs use the cached runtime.
+- To stop a hung run, stop the runner, then end **only** the processes whose command line names your scratch paths (the Playwright node processes and their Electron tree). Do not end other Electron or JOY processes.
+- A spec that passes proves only what it asserts. Report passes, failures and the tests that never ran separately.
 
 ## 7. Report like this
 
