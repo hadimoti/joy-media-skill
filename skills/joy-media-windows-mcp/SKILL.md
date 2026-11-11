@@ -104,7 +104,10 @@ Shows the Missing media section and the relink rules on a build that has them. U
 6. Relink with the **original** file: expect **Missing media (0)** and "Relinked <name>.", and the preview shows the clip.
 7. Close the app, relaunch on the same profile: the project opens with no Missing media section and the clip still on the timeline.
 
-Not covered here: the "Use different file" override with Undo, and cancelling the picker. A relinked original is not re-added as a card in the media list on the tested build.
+8. **Cancel check:** click Relink, then Cancel in the file picker. Expect no change, no error and an empty scratch library.
+9. **Override and Undo:** after the refusal in step 5, click **Use different file** (a second picker opens), choose the wrong file. Expect the section to read "Missing media (0)" with "<name> is now a separate asset; 1 clip(s) use it. The original is unchanged. Undo reverses this.", and the preview shows the new clip's picture. Click the **undo arrow** in the title bar (about 2196, 288 on a 4920x2160 screen). Expect "Missing media (1)" again with the original card and its Relink button, and the preview empty. The redo arrow becomes active.
+
+On the tested build the relinked or override file was not added as a card in the media list, and the scratch library folder still held only its catalog.json afterwards (the media is held with the project). A relinked original is not re-added as a card in the media list on the tested build.
 
 ## 4. Before, during and after a run
 
