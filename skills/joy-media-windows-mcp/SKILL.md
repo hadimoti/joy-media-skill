@@ -157,6 +157,16 @@ The JOY Media repo has packaged-app specs under `tests/desktop`. Facts from runn
 - To stop a hung run, stop the runner, then end **only** the processes whose command line names your scratch paths (the Playwright node processes and their Electron tree). Do not end other Electron or JOY processes.
 - A spec that passes proves only what it asserts. Report passes, failures and the tests that never ran separately.
 
+## 6c. Windows Sandbox and scripted attended runs (v1.1.0 release work)
+
+- **Windows Sandbox runs one instance at a time.** Close the window of the first run before the next one starts. With Windows-MCP: switch to the "Windows Sandbox" window, then click its close button and OK. The scripts in the repo (`tooling/release/sandbox/run-sandbox.ps1 -Kind lifecycle|upgrade`) start the Sandbox with networking off, wait for the result and copy the receipt out. Wait up to 60 seconds after an uninstall: the uninstaller removes its folder in the background.
+- **Sandbox scripts run on Windows PowerShell 5**, so receipts have a UTF-8 byte-order mark. Strip it before `JSON.parse`, by char code (`text.charCodeAt(0) === 0xfeff`), not with a raw BOM character in source (lint refuses it).
+- **PATH bug in the v1.0.x install script**: it glued the install folder onto the last PATH entry. The v1.1.0 setup repairs it. When you test an upgrade over v1.0.2, check `PATH` for a glued entry before and after.
+- **Icon cache**: Windows can show the old icon after an install over an older build. This is the shell cache, not the exe. Judge the icon from the exe, not from the shortcut.
+- **Scripted attended receipts**: `tooling/release/attended/run-scenario.mjs --scenario desktop.app.restart-save-export|project.persistence.fresh-process`. Unzip the release zip into a scratch folder (it already carries playwright-core), pass `--candidate <40-hex>`, `--expected-exe-sha256`, `--owner-library-files <count>`, a scratch library, and a new run folder for every dry run and every launch. The restart scenario's `--project` is the project id from the profile database (`project_documents.project_id`, a `project-...` value), not the id inside the document. Dry run first; then `--launch`. Check the `joy://` key before and after.
+- **One lock file for app launches** when two agents share the PC: `C:\jgp\LOCK-app-run.txt` (name, time, reason); delete your own when done.
+- A startup error box "Failed to get 'documents' path" appears when a run uses a scratch `USERPROFILE` that has no Documents folder (a development build of folder projects). Set the build's projects-folder override, or give the scratch profile a Documents folder.
+
 ## 7. Report like this
 
 State what was run (build, profile copy, layout), the numbers (phase times, peak memory, sizes, tags), the checks that passed (`joy://` key unchanged, folder diffs empty, decode clean), what was **not** verified, and the one decision you need from the owner. Say "one run per build" when that is all you have. For a manual run, list the checks done by hand separately from the ones a tool measured, and list what was not run. A manual run is not a substitute for a scripted receipt.
