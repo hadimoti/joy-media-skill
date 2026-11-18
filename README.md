@@ -8,7 +8,8 @@ JOY Media: https://github.com/hadimoti/joy-media
 
 ```
 skills/joy-media-windows-mcp/
-  SKILL.md                 the skill (method, safety rules, coordinates, pitfalls)
+  SKILL.md                 the skill (method, safety rules, coordinates, pitfalls; live QA driver,
+                           app lock, Windows Sandbox receipts, QC and provider checks, release upload)
   scripts/
     list-tree.ps1          list a folder tree (path, length, mtime) to prove nothing changed
     sampler.ps1            per-process memory / CPU / NVENC / GPU sampler, once a second
